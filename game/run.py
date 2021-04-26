@@ -12,7 +12,7 @@ from env import PreprocessEnv
 
 
 class Arguments:
-    def __init__(self, agent=None, env=None, gpu_id=None, if_on_policy=False):
+    def __init__(self, agent=None, env=None, gpu_id=None, if_on_policy=True):
         self.agent = agent  # Deep Reinforcement Learning algorithm
         self.cwd = None  # current work directory. cwd is None means set it automatically
         self.env = env  # the environment for training
@@ -23,8 +23,8 @@ class Arguments:
         self.net_dim = 2 ** 8  # the network width
         self.batch_size = 2 ** 8  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 0  # repeatedly update network to keep critic's loss small
-        self.target_step = 2 ** 10  # collect target_step, then update network
-        self.max_memo = 2 ** 17  # capacity of replay buffer
+        self.target_step = 2 ** 30  # collect target_step, then update network
+        self.max_memo = 2 ** 12  # capacity of replay buffer
         if if_on_policy:  # (on-policy)
             self.net_dim = 2 ** 9
             self.batch_size = 2 ** 9
