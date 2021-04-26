@@ -238,15 +238,26 @@ class SharedPPODiscrete(nn.Module):
             def set_dim(i):
                 return int(12 * 1.5 ** i)
 
-            self.net = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
-                                     nn.Conv2d(state_dim[0], set_dim(0), 4, 2, bias=True), nn.LeakyReLU(),
-                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 1, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 1, bias=True), nn.ReLU(),
-                                     NnReshape(-1),
-                                     nn.Linear(set_dim(5), mid_dim), nn.ReLU())
+            self.conv = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
+                                      nn.Conv2d(state_dim[0], set_dim(0), 3, 2, 1, bias=True), nn.LeakyReLU(),
+                                      nn.Conv2d(set_dim(0), set_dim(1), 3, 2, 1, bias=False), nn.ReLU(),
+                                      nn.Conv2d(set_dim(1), set_dim(2), 3, 2, 1, bias=False), nn.ReLU(),
+                                      nn.Conv2d(set_dim(2), set_dim(3), 3, 2, 1, bias=True), nn.ReLU(),
+                                      nn.Conv2d(set_dim(3), set_dim(4), 3, 2, 1, bias=True), nn.ReLU(),
+                                      nn.Conv2d(set_dim(4), set_dim(5), 3, 2, 1, bias=True), nn.ReLU(),
+                                      NnReshape(-1),
+                                      )
+            with torch.no_grad():
+                tmp = torch.rand((1, *state_dim))
+                self.out_dim = self.conv(tmp).shape[1]
+            self.fc = nn.Sequential(
+                nn.Linear(self.out_dim, mid_dim), nn.ReLU()
+            )
+
+            self.net = nn.Sequential(
+                self.conv,
+                self.fc
+            )
         self.actor = nn.Linear(mid_dim, action_dim)
         self.critic1 = nn.Linear(mid_dim, 1)
         self.critic2 = nn.Linear(mid_dim, 1)

@@ -114,6 +114,47 @@ def demo2_continuous_action_space_on_policy():
     train_and_evaluate_mp(args)
 
 
+
+def demo2_discrete_action_space_on_policy():
+    args = Arguments(if_on_policy=True)  # hyper-parameters of on-policy is different from off-policy
+    args.random_seed = 1943
+
+    '''choose an DRL algorithm'''
+    from elegantrl.agent import AgentSharedPPODiscrete
+    from atari_env import AtariGameEnv
+    args.agent = AgentSharedPPODiscrete()
+    args.agent.if_use_gae = True
+
+
+    '''choose environment'''
+    "TotalStep: 2e5, TargetReturn: -200, UsedTime: 300s, Pendulum-v0, PPO"
+    env = gym.make('Breakout-v0')
+    #env.target_return = -200  # set target_return manually for env 'Pendulum-v0'
+    args.env = AtariGameEnv(env=env)
+    # args.net_dim = 2 ** 8  # change a default hyper-parameters
+    # args.batch_size = 2 ** 5
+    args.eval_gap = 2 ** 5
+    # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
+    # args.repeat_times = 2 ** 3
+    # args.target_step = 200 * 8
+    # args.eval_gap = 2 ** 6
+
+
+    "PPO    TotalStep: 8e5, TargetReturn: 200, UsedTime: 1500s, LunarLanderContinuous-v2"
+    # args.env = PreprocessEnv(env=gym.make('LunarLanderContinuous-v2'))
+    # args.reward_scale = 2 ** 0  # RewardRange: -800 < -200 < 200 < 302
+
+    "PPO    TotalStep: 8e5, TargetReturn: 300, UsedTime: 1800s, BipedalWalker-v3"
+    # args.env = PreprocessEnv(env=gym.make('BipedalWalker-v3'))
+    # args.reward_scale = 2 ** 0  # RewardRange: -200 < -150 < 300 < 334
+    # args.gamma = 0.96
+
+    '''train and evaluate'''
+    # train_and_evaluate(args)
+    args.rollout_num = 3
+    train_and_evaluate_mp(args)
+
+
 def demo3_custom_env_fin_rl():
     from elegantrl.agent import AgentPPO
 
@@ -416,7 +457,8 @@ def demo4_bullet_mujoco_on_policy():
 if __name__ == '__main__':
     #demo1_discrete_action_space()
     # demo2_continuous_action_space_off_policy()
-    demo2_continuous_action_space_on_policy()
+    #demo2_continuous_action_space_on_policy()
+    demo2_discrete_action_space_on_policy()
     # demo3_custom_env_fin_rl()
     # demo4_bullet_mujoco_off_policy()
     # demo4_bullet_mujoco_on_policy()
