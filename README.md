@@ -1,2 +1,2 @@
 
-# Fork from [ElegantRL](https://github.com/AI4Finance-LLC/ElegantRL)
+# Forked from [ElegantRL](https://github.com/AI4Finance-LLC/ElegantRL)
