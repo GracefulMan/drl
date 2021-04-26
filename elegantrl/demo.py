@@ -138,6 +138,8 @@ def demo2_discrete_action_space_on_policy():
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     # args.repeat_times = 2 ** 3
     args.target_step = 200 * 10
+    args.batch_size = 2 * 8
+    args.net_dim = 2 * 9
     # args.eval_gap = 2 ** 6
 
 
@@ -152,7 +154,7 @@ def demo2_discrete_action_space_on_policy():
 
     '''train and evaluate'''
     # train_and_evaluate(args)
-    args.rollout_num = 3
+    args.rollout_num = 8
     train_and_evaluate_mp(args)
 
 

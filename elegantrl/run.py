@@ -82,7 +82,7 @@ class Arguments:
                 print("| Remove history")
             os.makedirs(self.cwd, exist_ok=True)
 
-        os.environ['CUDA_VISIBLE_DEVICES'] = str(self.gpu_id)
+        #os.environ['CUDA_VISIBLE_DEVICES'] = str(self.gpu_id)
         torch.set_num_threads(self.num_threads)
         torch.set_default_dtype(torch.float32)
         torch.manual_seed(self.random_seed)
