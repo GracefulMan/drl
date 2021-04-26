@@ -141,10 +141,9 @@ class ActorPPO(nn.Module):
                                      NnReshape(-1),
                                      nn.Linear(set_dim(5), mid_dim), nn.ReLU(),
                                      nn.Linear(mid_dim, action_dim), )
-
         self.a_std_log = nn.Parameter(torch.zeros((1, action_dim)) - 0.5, requires_grad=True)  # trainable parameter
         self.sqrt_2pi_log = np.log(np.sqrt(2 * np.pi))
-
+        self.softmax = nn.Softmax(dim=1)
         layer_norm(self.net[-1], std=0.1)  # output layer for action
 
     def forward(self, state):
@@ -153,7 +152,6 @@ class ActorPPO(nn.Module):
     def get_action_noise(self, state):
         a_avg = self.net(state)
         a_std = self.a_std_log.exp()
-
         noise = torch.randn_like(a_avg)
         action = a_avg + noise * a_std
         return action, noise
@@ -164,6 +162,129 @@ class ActorPPO(nn.Module):
         delta = ((a_avg - action) / a_std).pow(2).__mul__(0.5)  # __mul__(0.5) is * 0.5
         logprob = -(self.a_std_log + self.sqrt_2pi_log + delta)
         return logprob.sum(1)
+
+
+
+
+class ActorPPODiscrete(nn.Module):
+    def __init__(self,mid_dim, state_dim, action_dim, if_use_dn=False):
+        super(ActorPPODiscrete, self).__init__()
+        if isinstance(state_dim, int):
+            if if_use_dn:
+                nn_dense = DenseNet(mid_dim // 2)
+                inp_dim = nn_dense.inp_dim
+                out_dim = nn_dense.out_dim
+
+                self.net = nn.Sequential(nn.Linear(state_dim, inp_dim), nn.ReLU(),
+                                         nn_dense,
+                                         nn.Linear(out_dim, action_dim), )
+            else:
+                self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                         nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                         nn.Linear(mid_dim, mid_dim), nn.Hardswish(),
+                                         nn.Linear(mid_dim, action_dim), )
+        else:
+            def set_dim(i):
+                return int(12 * 1.5 ** i)
+
+            self.net = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
+                                     nn.Conv2d(state_dim[0], set_dim(0), 4, 2, bias=True), nn.LeakyReLU(),
+                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 1, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 1, bias=True), nn.ReLU(),
+                                     NnReshape(-1),
+                                     nn.Linear(set_dim(5), mid_dim), nn.ReLU(),
+                                     nn.Linear(mid_dim, action_dim), )
+        layer_norm(self.net[-1], std=0.1)  # output layer for action
+        self.softmax = torch.nn.Softmax(dim=1)
+
+    def forward(self, x):
+        return self.net(x)
+
+    def get_action_and_logprob(self, x):
+        logits = self.net(x)
+        policy = self.softmax(logits)
+        m = torch.distributions.Categorical(policy)
+        action = m.sample()
+        logprob = m.log_prob(action)
+        return action, logprob
+
+
+    def compute_logprob(self,state, action):
+        logits = self.net(state)
+        policy = self.softmax(logits)
+        m = torch.distributions.Categorical(policy)
+        return m.log_prob(action)
+
+
+
+class SharedPPODiscrete(nn.Module):
+    def __init__(self, mid_dim, state_dim, action_dim, if_use_dn=False):
+        super(SharedPPODiscrete, self).__init__()
+        if isinstance(state_dim, int):
+            if if_use_dn:
+                nn_dense = DenseNet(mid_dim // 2)
+                inp_dim = nn_dense.inp_dim
+                out_dim = nn_dense.out_dim
+                self.net = nn.Sequential(nn.Linear(state_dim, inp_dim), nn.ReLU(),
+                                         nn_dense)
+            else:
+                self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                         nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                         nn.Linear(mid_dim, mid_dim), nn.Hardswish())
+        else:
+            def set_dim(i):
+                return int(12 * 1.5 ** i)
+
+            self.net = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
+                                     nn.Conv2d(state_dim[0], set_dim(0), 4, 2, bias=True), nn.LeakyReLU(),
+                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
+                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 1, bias=True), nn.ReLU(),
+                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 1, bias=True), nn.ReLU(),
+                                     NnReshape(-1),
+                                     nn.Linear(set_dim(5), mid_dim), nn.ReLU())
+        self.actor = nn.Linear(mid_dim, action_dim)
+        self.critic1 = nn.Linear(mid_dim, 1)
+        self.critic2 = nn.Linear(mid_dim, 1)
+
+        layer_norm(self.actor, std=0.1)  # output layer for action
+        layer_norm(self.critic1, std=0.1)
+        layer_norm(self.critic2, std=0.1)
+        self.softmax = torch.nn.Softmax(dim=1)
+
+
+    def forward(self, state):
+        x = self.net(state)
+        logits = self.actor(x)
+        return logits
+
+    def get_action_and_logprob(self, state):
+        x = self.net(state)
+        logits = self.actor(x)
+        policy = self.softmax(logits)
+        m = torch.distributions.Categorical(policy)
+        action = m.sample()
+        logprob = m.log_prob(action)
+        return action, logprob
+
+    def get_q(self, state):
+        x = self.net(state)
+        q1 = self.critic1(x)
+        q2 = self.critic2(x)
+        q = torch.min(q1, q2)
+        return q
+
+    def compute_logprob(self,state, action):
+        x = self.net(state)
+        logits = self.actor(x)
+        policy = self.softmax(logits)
+        m = torch.distributions.Categorical(policy)
+        return m.log_prob(action)
+
 
 
 class ActorSAC(nn.Module):

@@ -4,7 +4,7 @@ import numpy as np
 import numpy.random as rd
 from copy import deepcopy
 from elegantrl.net import QNet, QNetDuel, QNetTwin, QNetTwinDuel
-from elegantrl.net import Actor, ActorSAC, ActorPPO
+from elegantrl.net import Actor, ActorSAC, ActorPPO, ActorPPODiscrete, SharedPPODiscrete
 from elegantrl.net import Critic, CriticAdv, CriticTwin
 from elegantrl.net import SharedDPG, SharedSPG, SharedPPO
 
@@ -740,6 +740,189 @@ class AgentSharedSAC(AgentSAC):  # Integrated Soft Actor-Critic
         return alpha.item(), self.obj_c
 
 
+
+class AgentPPODiscrete(AgentBase):
+    def __init__(self):
+        super(AgentPPODiscrete, self).__init__()
+        self.ratio_clip = 0.2
+        self.lambda_entropy = 0.03  # could be 0.01 ~ 0.05
+        self.lambda_gae_adv = 0.97  # could be 0.95 ~ 0.99, GAE (Generalized Advantage Estimation. ICLR.2016.)
+        self.if_use_gae = False  # if use Generalized Advantage Estimation
+        self.if_on_policy = True  # AgentPPO is an on policy DRL algorithm
+        self.if_use_dn = False
+        self.optimizer = None
+        self.compute_reward = None  # attribution
+
+    def init(self, net_dim, state_dim, action_dim, if_per=False):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.compute_reward = self.compute_reward_gae if self.if_use_gae else self.compute_reward_adv
+
+        self.cri = CriticAdv(state_dim, net_dim, self.if_use_dn).to(self.device)
+        self.act = ActorPPODiscrete(net_dim, state_dim, action_dim, self.if_use_dn).to(self.device)
+        self.optimizer = torch.optim.Adam([{'params': self.act.parameters(), 'lr': self.learning_rate},
+                                           {'params': self.cri.parameters(), 'lr': self.learning_rate}])
+        self.criterion = torch.nn.SmoothL1Loss()
+        assert if_per is False  # on-policy don't need PER
+
+    def select_action(self, state) -> tuple:
+        states = torch.as_tensor((state,), dtype=torch.float32, device=self.device).detach_()
+        actions, logprob = self.act.get_action_and_logprob(states)
+        return actions[0].detach().cpu().numpy(), logprob[0].detach().cpu().numpy()
+
+    def explore_env(self, env, buffer, target_step, reward_scale, gamma) -> int:
+        buffer.empty_buffer_before_explore()  # NOTICE! necessary for on-policy
+        actual_step = 0
+        while actual_step < target_step:
+            state = env.reset()
+            for _ in range(env.max_step):
+                action, logprob = self.select_action(state)
+                next_state, reward, done, _ = env.step(action)
+                actual_step += 1
+                other = (reward * reward_scale, 0.0 if done else gamma, action, logprob)
+                buffer.append_buffer(state, other)
+                if done:
+                    break
+                state = next_state
+        return actual_step
+
+    def update_net(self, buffer, target_step, batch_size, repeat_times) -> (float, float):
+        buffer.update_now_len_before_sample()
+        buf_len = buffer.now_len  # assert buf_len >= _target_step
+        '''Trajectory using reverse reward'''
+        with torch.no_grad():
+            buf_reward, buf_mask, buf_action, buf_logprob, buf_state = buffer.sample_all()
+            bs = 2 ** 10  # set a smaller 'bs: batch size' when out of GPU memory.
+            buf_value = torch.cat([self.cri(buf_state[i:i + bs]) for i in range(0, buf_state.size(0), bs)], dim=0)
+            buf_r_sum, buf_advantage = self.compute_reward(buf_len, buf_reward, buf_mask, buf_value)
+            del buf_reward, buf_mask
+
+        '''PPO: Surrogate objective of Trust Region'''
+        obj_critic = None
+        for _ in range(int(repeat_times * buf_len / batch_size)):
+            indices = torch.randint(buf_len, size=(batch_size,), requires_grad=False, device=self.device)
+            state = buf_state[indices]
+            action = buf_action[indices]
+            r_sum = buf_r_sum[indices]
+            logprob = buf_logprob[indices]
+            advantage = buf_advantage[indices]
+            new_logprob = self.act.compute_logprob(state, action)  # it is obj_actor
+            ratio = (new_logprob - logprob).exp()
+            obj_surrogate1 = advantage * ratio
+            obj_surrogate2 = advantage * ratio.clamp(1 - self.ratio_clip, 1 + self.ratio_clip)
+            obj_surrogate = -torch.min(obj_surrogate1, obj_surrogate2).mean()
+            obj_entropy = (new_logprob.exp() * new_logprob).mean()  # policy entropy
+            obj_actor = obj_surrogate + obj_entropy * self.lambda_entropy
+            value = self.cri(state).squeeze(1)  # critic network predicts the reward_sum (Q value) of state
+            obj_critic = self.criterion(value, r_sum)
+
+            obj_united = obj_actor + obj_critic / (r_sum.std() + 1e-5)
+            self.optimizer.zero_grad()
+            obj_united.backward()
+            self.optimizer.step()
+
+        return obj_actor.item(), obj_critic.item()
+
+    def compute_reward_gae(self, buf_len, buf_reward, buf_mask, buf_value) -> (torch.Tensor, torch.Tensor):
+        """compute the excepted discounted episode return
+
+        :int buf_len: the length of ReplayBuffer
+        :torch.Tensor buf_reward: buf_reward.shape==(buf_len, 1)
+        :torch.Tensor buf_mask:   buf_mask.shape  ==(buf_len, 1)
+        :torch.Tensor buf_value:  buf_value.shape ==(buf_len, 1)
+        :return torch.Tensor buf_r_sum:      buf_r_sum.shape     ==(buf_len, 1)
+        :return torch.Tensor buf_advantage:  buf_advantage.shape ==(buf_len, 1)
+        """
+        buf_r_sum = torch.empty(buf_len, dtype=torch.float32, device=self.device)  # old policy value
+        buf_advantage = torch.empty(buf_len, dtype=torch.float32, device=self.device)  # advantage value
+
+        pre_r_sum = 0  # reward sum of previous step
+        pre_advantage = 0  # advantage value of previous step
+        for i in range(buf_len - 1, -1, -1):
+            buf_r_sum[i] = buf_reward[i] + buf_mask[i] * pre_r_sum
+            pre_r_sum = buf_r_sum[i]
+
+            buf_advantage[i] = buf_reward[i] + buf_mask[i] * pre_advantage - buf_value[i]
+            pre_advantage = buf_value[i] + buf_advantage[i] * self.lambda_gae_adv
+
+        buf_advantage = (buf_advantage - buf_advantage.mean()) / (buf_advantage.std() + 1e-5)
+        return buf_r_sum, buf_advantage
+
+    def compute_reward_adv(self, buf_len, buf_reward, buf_mask, buf_value) -> (torch.Tensor, torch.Tensor):
+        """compute the excepted discounted episode return
+
+        :int buf_len: the length of ReplayBuffer
+        :torch.Tensor buf_reward: buf_reward.shape==(buf_len, 1)
+        :torch.Tensor buf_mask:   buf_mask.shape  ==(buf_len, 1)
+        :torch.Tensor buf_value:  buf_value.shape ==(buf_len, 1)
+        :return torch.Tensor buf_r_sum:      buf_r_sum.shape     ==(buf_len, 1)
+        :return torch.Tensor buf_advantage:  buf_advantage.shape ==(buf_len, 1)
+        """
+        buf_r_sum = torch.empty(buf_len, dtype=torch.float32, device=self.device)  # reward sum
+        pre_r_sum = 0  # reward sum of previous step
+        for i in range(buf_len - 1, -1, -1):
+            buf_r_sum[i] = buf_reward[i] + buf_mask[i] * pre_r_sum
+            pre_r_sum = buf_r_sum[i]
+        buf_advantage = buf_r_sum - (buf_mask * buf_value.squeeze(1))
+        buf_advantage = (buf_advantage - buf_advantage.mean()) / (buf_advantage.std() + 1e-5)
+        return buf_r_sum, buf_advantage
+
+
+class AgentSharedPPODiscrete(AgentPPODiscrete):
+    def __init__(self):
+        super(AgentSharedPPODiscrete, self).__init__()
+
+    def init(self, net_dim, state_dim, action_dim, if_per=False):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.compute_reward = self.compute_reward_gae if self.if_use_gae else self.compute_reward_adv
+
+        self.act = SharedPPODiscrete(net_dim, state_dim, action_dim, self.if_use_dn).to(self.device)
+        self.optimizer = torch.optim.Adam([{'params': self.act.parameters(), 'lr': self.learning_rate}])
+        self.criterion = torch.nn.SmoothL1Loss()
+        assert if_per is False  # on-policy don't need PER
+
+    def update_net(self, buffer, target_step, batch_size, repeat_times) -> (float, float):
+        buffer.update_now_len_before_sample()
+        buf_len = buffer.now_len  # assert buf_len >= _target_step
+        '''Trajectory using reverse reward'''
+        with torch.no_grad():
+            buf_reward, buf_mask, buf_action, buf_logprob, buf_state = buffer.sample_all()
+            bs = 2 ** 10  # set a smaller 'bs: batch size' when out of GPU memory.
+            buf_value = torch.cat([self.act.get_q(buf_state[i:i + bs]) for i in range(0, buf_state.size(0), bs)], dim=0)
+            buf_r_sum, buf_advantage = self.compute_reward(buf_len, buf_reward, buf_mask, buf_value)
+            del buf_reward, buf_mask
+
+        '''PPO: Surrogate objective of Trust Region'''
+        obj_critic = None
+        for _ in range(int(repeat_times * buf_len / batch_size)):
+            indices = torch.randint(buf_len, size=(batch_size,), requires_grad=False, device=self.device)
+            state = buf_state[indices]
+            action = buf_action[indices]
+            r_sum = buf_r_sum[indices]
+            logprob = buf_logprob[indices]
+            advantage = buf_advantage[indices]
+            new_logprob = self.act.compute_logprob(state, action)  # it is obj_actor
+            ratio = (new_logprob - logprob).exp()
+            obj_surrogate1 = advantage * ratio
+            obj_surrogate2 = advantage * ratio.clamp(1 - self.ratio_clip, 1 + self.ratio_clip)
+            obj_surrogate = -torch.min(obj_surrogate1, obj_surrogate2).mean()
+            obj_entropy = (new_logprob.exp() * new_logprob).mean()  # policy entropy
+            obj_actor = obj_surrogate + obj_entropy * self.lambda_entropy
+            value = self.act.get_q(state).squeeze(1)  # critic network predicts the reward_sum (Q value) of state
+            obj_critic = self.criterion(value, r_sum)
+
+            obj_united = obj_actor + obj_critic / (r_sum.std() + 1e-5)
+            self.optimizer.zero_grad()
+            obj_united.backward()
+            self.optimizer.step()
+        return obj_actor.item(), obj_critic.item()
+
+
+
+
+
+
+
+
 class AgentPPO(AgentBase):
     def __init__(self):
         super().__init__()
@@ -749,7 +932,6 @@ class AgentPPO(AgentBase):
         self.if_use_gae = False  # if use Generalized Advantage Estimation
         self.if_on_policy = True  # AgentPPO is an on policy DRL algorithm
         self.if_use_dn = False
-
         self.noise = None
         self.optimizer = None
         self.compute_reward = None  # attribution
@@ -760,11 +942,11 @@ class AgentPPO(AgentBase):
 
         self.cri = CriticAdv(state_dim, net_dim, self.if_use_dn).to(self.device)
         self.act = ActorPPO(net_dim, state_dim, action_dim, self.if_use_dn).to(self.device)
-
         self.optimizer = torch.optim.Adam([{'params': self.act.parameters(), 'lr': self.learning_rate},
                                            {'params': self.cri.parameters(), 'lr': self.learning_rate}])
         self.criterion = torch.nn.SmoothL1Loss()
         assert if_per is False  # on-policy don't need PER
+
 
     def select_action(self, state) -> tuple:
         """select action for PPO
@@ -774,23 +956,20 @@ class AgentPPO(AgentBase):
         :return array action: state.shape==(action_dim, )
         :return array noise: noise.shape==(action_dim, ), the noise
         """
-        states = torch.as_tensor((state,), dtype=torch.float32, device=self.device).detach()
+        states = torch.as_tensor((state,), dtype=torch.float32, device=self.device).detach_()
         actions, noises = self.act.get_action_noise(states)
         return actions[0].detach().cpu().numpy(), noises[0].detach().cpu().numpy()  # todo remove detach()
 
     def explore_env(self, env, buffer, target_step, reward_scale, gamma) -> int:
         buffer.empty_buffer_before_explore()  # NOTICE! necessary for on-policy
         # assert target_step == buffer.max_len - max_step
-
         actual_step = 0
         while actual_step < target_step:
             state = env.reset()
             for _ in range(env.max_step):
                 action, noise = self.select_action(state)
-
                 next_state, reward, done, _ = env.step(np.tanh(action))
                 actual_step += 1
-
                 other = (reward * reward_scale, 0.0 if done else gamma, *action, *noise)
                 buffer.append_buffer(state, other)
                 if done:
@@ -805,11 +984,9 @@ class AgentPPO(AgentBase):
         '''Trajectory using reverse reward'''
         with torch.no_grad():
             buf_reward, buf_mask, buf_action, buf_noise, buf_state = buffer.sample_all()
-
             bs = 2 ** 10  # set a smaller 'bs: batch size' when out of GPU memory.
             buf_value = torch.cat([self.cri(buf_state[i:i + bs]) for i in range(0, buf_state.size(0), bs)], dim=0)
             buf_logprob = -(buf_noise.pow(2).__mul__(0.5) + self.act.a_std_log + self.act.sqrt_2pi_log).sum(1)
-
             buf_r_sum, buf_advantage = self.compute_reward(buf_len, buf_reward, buf_mask, buf_value)
             del buf_reward, buf_mask, buf_noise
 
@@ -823,7 +1000,6 @@ class AgentPPO(AgentBase):
             r_sum = buf_r_sum[indices]
             logprob = buf_logprob[indices]
             advantage = buf_advantage[indices]
-
             new_logprob = self.act.compute_logprob(state, action)  # it is obj_actor
             ratio = (new_logprob - logprob).exp()
             obj_surrogate1 = advantage * ratio

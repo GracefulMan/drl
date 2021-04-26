@@ -19,17 +19,17 @@ def demo1_discrete_action_space():
     '''choose environment'''
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 20s, CartPole-v0"
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 30s, CartPole-v0 rollout_num = 2"
-    # args.env = PreprocessEnv(env=gym.make('CartPole-v0'))
-    # args.net_dim = 2 ** 7  # change a default hyper-parameters
-    # args.batch_size = 2 ** 7
-    # args.target_step = 2 ** 8
-    # args.eval_gap = 2 ** 0
+    args.env = PreprocessEnv(env=gym.make('Acrobot-v1'))
+    args.net_dim = 2 ** 7  # change a default hyper-parameters
+    args.batch_size = 2 ** 7
+    args.target_step = 2 ** 8
+    args.eval_gap = 2 ** 0
 
     "TotalStep: 6e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, D3DQN"
     "TotalStep: 4e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, DuelDQN"
-    args.env = PreprocessEnv(env=gym.make('LunarLander-v2'))
-    args.net_dim = 2 ** 8
-    args.batch_size = 2 ** 8
+    # args.env = PreprocessEnv(env=gym.make('LunarLander-v2'))
+    # args.net_dim = 2 ** 8
+    # args.batch_size = 2 ** 8
 
     '''train and evaluate'''
     train_and_evaluate(args)
@@ -79,19 +79,25 @@ def demo2_continuous_action_space_on_policy():
     args.random_seed = 1943
 
     '''choose an DRL algorithm'''
-    from elegantrl.agent import AgentPPO
-    args.agent = AgentPPO()
-    args.agent.if_use_gae = False
+    from elegantrl.agent import AgentPPO, AgentPPODiscrete, AgentSharedPPODiscrete
+    args.agent = AgentSharedPPODiscrete()
+    args.agent.if_use_gae = True
+
 
     '''choose environment'''
     "TotalStep: 2e5, TargetReturn: -200, UsedTime: 300s, Pendulum-v0, PPO"
-    env = gym.make('Pendulum-v0')
-    env.target_return = -200  # set target_return manually for env 'Pendulum-v0'
+    env = gym.make('CartPole-v0')
+    #env.target_return = -200  # set target_return manually for env 'Pendulum-v0'
     args.env = PreprocessEnv(env=env)
-    args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
-    args.repeat_times = 2 ** 3
-    args.target_step = 200 * 8
-    args.eval_gap = 2 ** 6
+    args.net_dim = 2 ** 7  # change a default hyper-parameters
+    args.batch_size = 2 ** 7
+    args.target_step = 2 ** 8
+    args.eval_gap = 2 ** 0
+    # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
+    # args.repeat_times = 2 ** 3
+    # args.target_step = 200 * 8
+    # args.eval_gap = 2 ** 6
+
 
     "PPO    TotalStep: 8e5, TargetReturn: 200, UsedTime: 1500s, LunarLanderContinuous-v2"
     # args.env = PreprocessEnv(env=gym.make('LunarLanderContinuous-v2'))
@@ -104,7 +110,7 @@ def demo2_continuous_action_space_on_policy():
 
     '''train and evaluate'''
     # train_and_evaluate(args)
-    args.rollout_num = 2
+    args.rollout_num = 4
     train_and_evaluate_mp(args)
 
 
@@ -408,9 +414,9 @@ def demo4_bullet_mujoco_on_policy():
 
 
 if __name__ == '__main__':
-    demo1_discrete_action_space()
+    #demo1_discrete_action_space()
     # demo2_continuous_action_space_off_policy()
-    # demo2_continuous_action_space_on_policy()
+    demo2_continuous_action_space_on_policy()
     # demo3_custom_env_fin_rl()
     # demo4_bullet_mujoco_off_policy()
     # demo4_bullet_mujoco_on_policy()
