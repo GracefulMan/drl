@@ -29,8 +29,8 @@ class Arguments:
             self.net_dim = 2 ** 9
             self.batch_size = 2 ** 9
             self.repeat_times = 2 ** 4
-            self.target_step = 2 ** 12
-            self.max_memo = self.target_step
+            self.target_step = 2 ** 30
+            self.max_memo = 2 ** 12
         self.gamma = 0.99  # discount factor of future rewards
         self.reward_scale = 2 ** 0  # an approximate target reward usually be closed to 256
         self.if_per = False  # Prioritized Experience Replay for sparse reward
