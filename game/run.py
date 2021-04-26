@@ -23,13 +23,13 @@ class Arguments:
         self.net_dim = 2 ** 8  # the network width
         self.batch_size = 2 ** 8  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 0  # repeatedly update network to keep critic's loss small
-        self.target_step = 2 ** 30  # collect target_step, then update network
+        self.target_step = 2 ** 12  # collect target_step, then update network
         self.max_memo = 2 ** 12  # capacity of replay buffer
         if if_on_policy:  # (on-policy)
             self.net_dim = 2 ** 9
             self.batch_size = 2 ** 9
             self.repeat_times = 2 ** 4
-            self.target_step = 2 ** 30
+            self.target_step = 2 ** 12
             self.max_memo = 2 ** 12
         self.gamma = 0.99  # discount factor of future rewards
         self.reward_scale = 2 ** 0  # an approximate target reward usually be closed to 256
@@ -39,7 +39,7 @@ class Arguments:
         self.num_threads = 8  # cpu_num for evaluate model, torch.set_num_threads(self.num_threads)
 
         '''Arguments for evaluate'''
-        self.break_step = 2 ** 20  # break training after 'total_step > break_step'
+        self.break_step = 10**9  # break training after 'total_step > break_step'
         self.if_remove = True  # remove the cwd folder? (True, False, None:ask me)
         self.if_allow_break = True  # allow break training when reach goal (early termination)
         self.eval_gap = 2 ** 5  # evaluate the agent per eval_gap seconds
