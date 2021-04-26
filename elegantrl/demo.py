@@ -137,7 +137,7 @@ def demo2_discrete_action_space_on_policy():
     args.eval_gap = 2 ** 3
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     # args.repeat_times = 2 ** 3
-    # args.target_step = 200 * 8
+    args.target_step = 200 * 10
     # args.eval_gap = 2 ** 6
 
 
