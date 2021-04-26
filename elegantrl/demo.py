@@ -117,7 +117,7 @@ def demo2_continuous_action_space_on_policy():
 
 def demo2_discrete_action_space_on_policy():
     args = Arguments(if_on_policy=True)  # hyper-parameters of on-policy is different from off-policy
-    args.random_seed = 1943
+    args.random_seed = 0
 
     '''choose an DRL algorithm'''
     from elegantrl.agent import AgentSharedPPODiscrete
@@ -131,9 +131,10 @@ def demo2_discrete_action_space_on_policy():
     env = gym.make('Breakout-v0')
     #env.target_return = -200  # set target_return manually for env 'Pendulum-v0'
     args.env = AtariGameEnv(env=env)
-    # args.net_dim = 2 ** 8  # change a default hyper-parameters
+    #args.env = PreprocessEnv(env=env)
+    #args.net_dim = 2 ** 8  # change a default hyper-parameters
     # args.batch_size = 2 ** 5
-    args.eval_gap = 2 ** 5
+    args.eval_gap = 2 ** 3
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     # args.repeat_times = 2 ** 3
     # args.target_step = 200 * 8

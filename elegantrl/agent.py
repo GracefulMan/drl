@@ -745,9 +745,9 @@ class AgentPPODiscrete(AgentBase):
     def __init__(self):
         super(AgentPPODiscrete, self).__init__()
         self.ratio_clip = 0.2
-        self.lambda_entropy = 0.03  # could be 0.01 ~ 0.05
+        self.lambda_entropy = 0.01  # could be 0.01 ~ 0.05
         self.lambda_gae_adv = 0.97  # could be 0.95 ~ 0.99, GAE (Generalized Advantage Estimation. ICLR.2016.)
-        self.if_use_gae = False  # if use Generalized Advantage Estimation
+        self.if_use_gae = True  # if use Generalized Advantage Estimation
         self.if_on_policy = True  # AgentPPO is an on policy DRL algorithm
         self.if_use_dn = False
         self.optimizer = None
