@@ -24,7 +24,7 @@ class Arguments:
         self.batch_size = 2 ** 8  # num of transitions sampled from replay buffer.
         self.repeat_times = 2 ** 0  # repeatedly update network to keep critic's loss small
         self.target_step = 2 ** 12  # collect target_step, then update network
-        self.max_memo = 2 ** 15  # capacity of replay buffer
+        self.max_memo = 2 ** 12  # capacity of replay buffer
         if if_on_policy:  # (on-policy)
             self.net_dim = 2 ** 9
             self.batch_size = 2 ** 8
