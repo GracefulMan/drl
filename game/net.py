@@ -198,12 +198,14 @@ class ActorPPODiscrete(nn.Module):
             with torch.no_grad():
                 tmp = torch.rand((1, *state_dim))
                 out_dim = conv(tmp).shape[1]
+
             fc = nn.Sequential(
-                nn.Linear(out_dim, mid_dim), nn.ReLU()
+                nn.Linear(out_dim, mid_dim), nn.ReLU(),
+                nn.Linear(mid_dim, action_dim)
             )
 
             self.net = nn.Sequential(conv, fc)
-        layer_norm(self.net[-1], std=0.1)  # output layer for action
+        #layer_norm(self.net[-1], std=0.1)  # output layer for action
         self.softmax = torch.nn.Softmax(dim=1)
 
     def forward(self, x):
@@ -422,12 +424,13 @@ class CriticAdv(nn.Module):
                 tmp = torch.rand((1, *state_dim))
                 out_dim = conv(tmp).shape[1]
             fc = nn.Sequential(
-                nn.Linear(out_dim, mid_dim), nn.ReLU()
+                nn.Linear(out_dim, mid_dim), nn.ReLU(),
+                nn.Linear(mid_dim, 1)
             )
 
             self.net = nn.Sequential(conv, fc)
 
-        layer_norm(self.net[-1], std=0.5)  # output layer for Q value
+        #layer_norm(self.net[-1], std=0.5)  # output layer for Q value
 
     def forward(self, state):
         return self.net(state)  # Q value

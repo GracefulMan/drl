@@ -759,6 +759,8 @@ class AgentPPODiscrete(AgentBase):
 
         self.cri = CriticAdv(state_dim, net_dim, self.if_use_dn).to(self.device)
         self.act = ActorPPODiscrete(net_dim, state_dim, action_dim, self.if_use_dn).to(self.device)
+        print('actor:', self.act)
+        print('critic:', self.cri)
         self.optimizer = torch.optim.Adam([{'params': self.act.parameters(), 'lr': self.learning_rate},
                                            {'params': self.cri.parameters(), 'lr': self.learning_rate}])
         self.criterion = torch.nn.SmoothL1Loss()
