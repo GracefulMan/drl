@@ -120,11 +120,10 @@ def demo2_discrete_action_space_on_policy():
     args.random_seed = 0
 
     '''choose an DRL algorithm'''
-    from agent import AgentSharedPPODiscrete
+    from agent import AgentPPODiscrete
     from atari_env import AtariGameEnv
-    args.agent = AgentSharedPPODiscrete()
+    args.agent = AgentPPODiscrete()
     args.agent.if_use_gae = True
-
 
     '''choose environment'''
     "TotalStep: 2e5, TargetReturn: -200, UsedTime: 300s, Pendulum-v0, PPO"
@@ -132,14 +131,13 @@ def demo2_discrete_action_space_on_policy():
     #env.target_return = -200  # set target_return manually for env 'Pendulum-v0'
     args.env = AtariGameEnv(env=env)
     #args.env = PreprocessEnv(env=env)
-    #args.net_dim = 2 ** 8  # change a default hyper-parameters
-    # args.batch_size = 2 ** 5
     args.eval_gap = 2 ** 2
     # args.reward_scale = 2 ** -3  # RewardRange: -1800 < -200 < -50 < 0
     # args.repeat_times = 2 ** 3
     #args.target_step = 200 * 10
     args.batch_size = 128
-    args.net_dim = 2 ** 9
+    args.net_dim = 512
+
     # args.eval_gap = 2 ** 6
 
 

@@ -185,18 +185,24 @@ class ActorPPODiscrete(nn.Module):
                                          nn.Linear(mid_dim, action_dim), )
         else:
             def set_dim(i):
-                return int(12 * 1.5 ** i)
+                return 32
+                #return int(12 * 1.5 ** i)
 
-            self.net = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
-                                     nn.Conv2d(state_dim[0], set_dim(0), 4, 2, bias=True), nn.LeakyReLU(),
-                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 1, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 1, bias=True), nn.ReLU(),
-                                     NnReshape(-1),
-                                     nn.Linear(set_dim(5), mid_dim), nn.ReLU(),
-                                     nn.Linear(mid_dim, action_dim), )
+            conv = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
+                                      nn.Conv2d(state_dim[0], set_dim(0), 3, 2, 1, bias=True), nn.ReLU(),
+                                      nn.Conv2d(set_dim(0), set_dim(1), 3, 2, 1, bias=False), nn.ReLU(),
+                                      nn.Conv2d(set_dim(1), set_dim(2), 3, 2, 1, bias=False), nn.ReLU(),
+                                      nn.Conv2d(set_dim(2), set_dim(3), 3, 2, 1, bias=True), nn.ReLU(),
+                                      NnReshape(-1)
+                                      )
+            with torch.no_grad():
+                tmp = torch.rand((1, *state_dim))
+                out_dim = conv(tmp).shape[1]
+            fc = nn.Sequential(
+                nn.Linear(out_dim, mid_dim), nn.ReLU()
+            )
+
+            self.net = nn.Sequential(conv, fc)
         layer_norm(self.net[-1], std=0.1)  # output layer for action
         self.softmax = torch.nn.Softmax(dim=1)
 
@@ -403,18 +409,23 @@ class CriticAdv(nn.Module):
                                      nn.Linear(mid_dim, 1))
         else:
             def set_dim(i):
-                return int(12 * 1.5 ** i)
+                return 32
 
-            self.net = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
-                                     nn.Conv2d(state_dim[0], set_dim(0), 4, 2, bias=True), nn.LeakyReLU(),
-                                     nn.Conv2d(set_dim(0), set_dim(1), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(1), set_dim(2), 3, 2, bias=False), nn.ReLU(),
-                                     nn.Conv2d(set_dim(2), set_dim(3), 3, 2, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(3), set_dim(4), 3, 1, bias=True), nn.ReLU(),
-                                     nn.Conv2d(set_dim(4), set_dim(5), 3, 1, bias=True), nn.ReLU(),
-                                     NnReshape(-1),
-                                     nn.Linear(set_dim(5), mid_dim), nn.ReLU(),
-                                     nn.Linear(mid_dim, 1))
+            conv = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
+                                 nn.Conv2d(state_dim[0], set_dim(0), 3, 2, 1, bias=True), nn.ReLU(),
+                                 nn.Conv2d(set_dim(0), set_dim(1), 3, 2, 1, bias=False), nn.ReLU(),
+                                 nn.Conv2d(set_dim(1), set_dim(2), 3, 2, 1, bias=False), nn.ReLU(),
+                                 nn.Conv2d(set_dim(2), set_dim(3), 3, 2, 1, bias=True), nn.ReLU(),
+                                 NnReshape(-1)
+                                 )
+            with torch.no_grad():
+                tmp = torch.rand((1, *state_dim))
+                out_dim = conv(tmp).shape[1]
+            fc = nn.Sequential(
+                nn.Linear(out_dim, mid_dim), nn.ReLU()
+            )
+
+            self.net = nn.Sequential(conv, fc)
 
         layer_norm(self.net[-1], std=0.5)  # output layer for Q value
 
