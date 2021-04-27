@@ -9,21 +9,23 @@ gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by
 
 def demo1_discrete_action_space():
     args = Arguments(agent=None, env=None, gpu_id=None)  # see Arguments() to see hyper-parameters
-
     '''choose an DRL algorithm'''
     # from elegantrl.agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
     # args.agent = AgentD3QN()
-    from elegantrl.agent import AgentDuelingDQN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
-    args.agent = AgentDuelingDQN()
+    from elegantrl.agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
+    from elegantrl.atari_env import AtariGameEnv
+    args.agent = AgentD3QN()
 
     '''choose environment'''
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 20s, CartPole-v0"
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 30s, CartPole-v0 rollout_num = 2"
-    args.env = PreprocessEnv(env=gym.make('Acrobot-v1'))
-    args.net_dim = 2 ** 7  # change a default hyper-parameters
-    args.batch_size = 2 ** 7
+    #args.env = PreprocessEnv(env=gym.make('CartPole-v0'))
+    args.env = AtariGameEnv(env=gym.make('Breakout-v0'))
+    args.net_dim = 2 ** 9  # change a default hyper-parameters
+    args.batch_size = 2 ** 8
     args.target_step = 2 ** 8
-    args.eval_gap = 2 ** 0
+    args.eval_gap = 2 ** 3
+    args.break_step = 10 ** 9
 
     "TotalStep: 6e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, D3DQN"
     "TotalStep: 4e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, DuelDQN"
@@ -32,9 +34,9 @@ def demo1_discrete_action_space():
     # args.batch_size = 2 ** 8
 
     '''train and evaluate'''
-    train_and_evaluate(args)
-    # args.rollout_num = 2
-    # train_and_evaluate_mp(args)
+    # train_and_evaluate(args)
+    args.rollout_num = 4
+    train_and_evaluate_mp(args)
 
 
 def demo2_continuous_action_space_off_policy():
@@ -453,11 +455,13 @@ def demo4_bullet_mujoco_on_policy():
 #     exit()
 
 
+
+
 if __name__ == '__main__':
-    #demo1_discrete_action_space()
+    demo1_discrete_action_space()
     # demo2_continuous_action_space_off_policy()
     #demo2_continuous_action_space_on_policy()
-    demo2_discrete_action_space_on_policy()
+    #demo2_discrete_action_space_on_policy()
     # demo3_custom_env_fin_rl()
     # demo4_bullet_mujoco_off_policy()
     # demo4_bullet_mujoco_on_policy()

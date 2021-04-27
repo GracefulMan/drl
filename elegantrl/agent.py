@@ -14,7 +14,7 @@ from elegantrl.net import SharedDPG, SharedSPG, SharedPPO
 class AgentBase:
     def __init__(self):
         self.learning_rate = 1e-4
-        self.soft_update_tau = 2 ** -8  # 5e-3 ~= 2 ** -8
+        self.soft_update_tau = 2**-8  # 5e-3 ~= 2 ** -8
         self.state = None  # set for self.update_buffer(), initialize before training
         self.device = None
 
