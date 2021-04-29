@@ -38,7 +38,7 @@ class Memory(gym.Wrapper):
         if flag:
             reward -= 0.01
         else:
-            reward += 0.01
+            reward += 0.05
         if done: reward += 10
         return obs, reward, done, info
 
