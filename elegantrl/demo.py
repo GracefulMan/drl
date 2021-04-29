@@ -19,7 +19,7 @@ def demo_for_minigrid():
     args.eval_gap = 1
     args.target_step = 2 ** 8
     args.break_step = 10**6
-    args.rollout_num = 2
+    args.rollout_num = 4
     train_and_evaluate_mp(args)
 
 
