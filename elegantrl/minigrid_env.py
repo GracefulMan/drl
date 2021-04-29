@@ -66,8 +66,8 @@ class Memory(gym.Wrapper):
 
 class MinigridEnv(gym.Wrapper):
     def __init__(self, env):
-        env = ActionBonus(env)
         env = RGBImgPartialObsWrapper(env)
+        env = ActionBonus(env)
         #env = RGBImgObsWrapper(env)
         env = WarpFrame(env)
         #env = Memory(env)
@@ -124,4 +124,5 @@ if __name__ == "__main__":
         env.render()
         action = env.action_space.sample()
         obs, reward, done, _ = env.step(action)
+        print(reward)
 
