@@ -124,5 +124,4 @@ if __name__ == "__main__":
         env.render()
         action = env.action_space.sample()
         obs, reward, done, _ = env.step(action)
-        print(reward)
 
