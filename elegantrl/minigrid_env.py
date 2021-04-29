@@ -66,9 +66,11 @@ class Memory(gym.Wrapper):
 
 class MinigridEnv(gym.Wrapper):
     def __init__(self, env):
-        env = RGBImgObsWrapper(env)
+        env = ActionBonus(env)
+        env = RGBImgPartialObsWrapper(env)
+        #env = RGBImgObsWrapper(env)
         env = WarpFrame(env)
-        env = Memory(env)
+        #env = Memory(env)
         self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True,scale=False)
         super(MinigridEnv, self).__init__(self.env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
