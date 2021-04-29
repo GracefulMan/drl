@@ -2,12 +2,12 @@ from gym_minigrid.wrappers import *
 from elegantrl.atari_env import wrap_deepmind
 import gym
 import cv2
+from collections import deque
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
-
         low_val = env.observation_space['image'].low.min()
         high_val = env.observation_space['image'].high.max()
         w, h, c = env.observation_space['image'].shape
@@ -20,10 +20,53 @@ class WarpFrame(gym.ObservationWrapper):
         return frame
 
 
+
+class Memory(gym.Wrapper):
+    def __init__(self, env):
+        gym.Wrapper.__init__(self, env)
+        self.sample_times = 2
+        w, h, _ = env.observation_space.shape
+        w, h = int(w / 2 ** self.sample_times), int(h / 2 ** self.sample_times)
+        self.max_len = 10 ** 3
+        self.memory = np.empty((self.max_len, w, h))
+        self.index = 0
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+        sampled_obs = self._downsampling(obs)
+        flag = self._append(sampled_obs)
+        print(flag)
+        if flag:
+            reward -= 0.01
+        return obs, reward, done, info
+
+    def _append(self, obs):
+        for i in range(self.memory.shape[0]):
+            if np.all(obs == self.memory[i].squeeze()):
+                return True
+        if self.index == self.max_len:
+            self.index = 0
+        self.memory[self.index] = obs
+        self.index += 1
+        return False
+
+    def _downsampling(self, obs:np.ndarray):
+        obs = cv2.cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
+        w, h= obs.shape
+        w = int(w / 2 ** self.sample_times)
+        h = int(h / 2 ** self.sample_times)
+        obs = cv2.resize(obs, (w, h), interpolation=cv2.INTER_AREA)
+        return obs
+
+
+
+
+
 class MinigridEnv(gym.Wrapper):
     def __init__(self, env):
         env = RGBImgObsWrapper(env)
         env = WarpFrame(env)
+        env = Memory(env)
         self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True,scale=True)
         super(MinigridEnv, self).__init__(self.env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
