@@ -20,7 +20,6 @@ def demo_for_minigrid():
     args.target_step = 2 ** 8
     args.break_step = 10 ** 6
     args.rollout_num = 4
-    args.env.target_return = 10 ** 5
     train_and_evaluate_mp(args)
 
 
