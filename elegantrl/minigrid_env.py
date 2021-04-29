@@ -35,7 +35,6 @@ class Memory(gym.Wrapper):
         obs, reward, done, info = self.env.step(action)
         sampled_obs = self._downsampling(obs)
         flag = self._append(sampled_obs)
-        print(flag)
         if flag:
             reward -= 0.01
         return obs, reward, done, info
