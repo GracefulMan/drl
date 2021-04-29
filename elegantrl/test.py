@@ -107,7 +107,7 @@ def test__show_available_env():
         print(env_name)
 
 
-# get_video_to_watch_gym_render()
+get_video_to_watch_gym_render()
 # test__show_available_env()
 
 class A:

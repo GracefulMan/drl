@@ -19,7 +19,7 @@ def demo1_discrete_action_space():
     '''choose environment'''
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 20s, CartPole-v0"
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 30s, CartPole-v0 rollout_num = 2"
-    args.env = PreprocessEnv(env=gym.make('Acrobot-v1'))
+    args.env = PreprocessEnv(env=gym.make('Platform-v0'))
     args.net_dim = 2 ** 7  # change a default hyper-parameters
     args.batch_size = 2 ** 7
     args.target_step = 2 ** 8
@@ -456,10 +456,10 @@ def demo4_bullet_mujoco_on_policy():
 
 
 if __name__ == '__main__':
-    #demo1_discrete_action_space()
+    demo1_discrete_action_space()
     # demo2_continuous_action_space_off_policy()
     #demo2_continuous_action_space_on_policy()
-    demo2_discrete_action_space_on_policy()
+    #demo2_discrete_action_space_on_policy()
     # demo3_custom_env_fin_rl()
     # demo4_bullet_mujoco_off_policy()
     # demo4_bullet_mujoco_on_policy()

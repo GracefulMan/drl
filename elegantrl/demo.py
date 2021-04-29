@@ -7,6 +7,22 @@ from elegantrl.run import Arguments, train_and_evaluate, train_and_evaluate_mp
 gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by casting to float32'
 
 
+
+def demo_for_minigrid():
+    args = Arguments(agent=None, env=None, gpu_id=None)
+    from elegantrl.agent import AgentD3QN
+    from elegantrl.minigrid_env import MinigridEnv
+    args.agent = AgentD3QN()
+    args.env = MinigridEnv(env=gym.make('MiniGrid-SimpleCrossingS9N1-v0'))
+    args.net_dim = 2 ** 8
+    args.batch_size = 32
+    args.eval_gap = 1
+    args.target_step = 2 ** 8
+    args.break_step = 10**6
+    args.rollout_num = 2
+    train_and_evaluate_mp(args)
+
+
 def demo1_discrete_action_space():
     args = Arguments(agent=None, env=None, gpu_id=None)  # see Arguments() to see hyper-parameters
     '''choose an DRL algorithm'''
@@ -458,7 +474,8 @@ def demo4_bullet_mujoco_on_policy():
 
 
 if __name__ == '__main__':
-    demo1_discrete_action_space()
+    demo_for_minigrid()
+    #demo1_discrete_action_space()
     # demo2_continuous_action_space_off_policy()
     #demo2_continuous_action_space_on_policy()
     #demo2_discrete_action_space_on_policy()
