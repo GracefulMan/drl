@@ -39,6 +39,7 @@ class Memory(gym.Wrapper):
             reward -= 0.01
         else:
             reward += 0.01
+        if done: reward += 10
         return obs, reward, done, info
 
     def _append(self, obs):
