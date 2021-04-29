@@ -1,6 +1,7 @@
 from gym_minigrid.wrappers import *
 import gym
 import cv2
+import numpy as np
 
 class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env, width=84, height=84, grayscale=True):
@@ -31,7 +32,8 @@ class WarpFrame(gym.ObservationWrapper):
         if self.grayscale:
             frame = np.expand_dims(frame, -1)
         frame = frame.transpose([2, 0, 1])
-        return frame
+        frame = (frame - 128.) / 128.
+        return np.array(frame, dtype=np.float32)
 
 
 class MinigridEnv(gym.Wrapper):
