@@ -135,8 +135,9 @@ class WarpFrame(gym.ObservationWrapper):
     def __init__(self, env, width=84, height=84, grayscale=True):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
-        self.width = width
-        self.height = height
+        w, h, c = env.observation_space.shape
+        self.width = width if width != None else w
+        self.height = height if height != None else h
         self.grayscale = grayscale
 
         low_val = env.observation_space.low.min()
@@ -239,7 +240,7 @@ class Observation(gym.ObservationWrapper):
         return np.array(observation, dtype=np.float32)
 
 
-def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
+def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False, image_w=84, image_h=84):
     """Configure environment for DeepMind-style Atari.
     """
     if episode_life:
@@ -247,7 +248,7 @@ def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, 
 
     if hasattr(env.unwrapped, 'get_action_meanings') and 'FIRE' in env.unwrapped.get_action_meanings():
         env = FireResetEnv(env)
-    env = WarpFrame(env)
+    env = WarpFrame(env, width=image_w, height=image_h)
     if scale:
         env = ScaledFloatFrame(env)
     if clip_rewards:

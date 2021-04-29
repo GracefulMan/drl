@@ -1,45 +1,30 @@
 from gym_minigrid.wrappers import *
+from elegantrl.atari_env import wrap_deepmind
 import gym
 import cv2
-import numpy as np
 
 class WarpFrame(gym.ObservationWrapper):
-    def __init__(self, env, width=84, height=84, grayscale=True):
+    def __init__(self, env):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
-        self.width = width
-        self.height = height
-        self.grayscale = grayscale
 
         low_val = env.observation_space['image'].low.min()
         high_val = env.observation_space['image'].high.max()
         w, h, c = env.observation_space['image'].shape
+        self.observation_space = spaces.Box(low=low_val, high=high_val,
+                shape=(w, h, c), dtype=np.uint8)
 
-
-        if self.grayscale:
-            self.observation_space = spaces.Box(low=low_val, high=high_val,
-                shape=(1, w, h), dtype=np.uint8)
-        else:
-            self.observation_space = spaces.Box(low=low_val, high=high_val,
-                shape=(3, w, h), dtype=np.uint8)
 
     def observation(self, frame):
         frame = frame['image']
-        if self.grayscale:
-            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
-        if self.width != None:
-            frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
-        if self.grayscale:
-            frame = np.expand_dims(frame, -1)
-        frame = frame.transpose([2, 0, 1])
-        frame = (frame - 128.) / 128.
-        return np.array(frame, dtype=np.float32)
+        return frame
 
 
 class MinigridEnv(gym.Wrapper):
     def __init__(self, env):
         env = RGBImgObsWrapper(env)
-        self.env = WarpFrame(env, width=None, height=None)
+        env = WarpFrame(env)
+        self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True,scale=True)
         super(MinigridEnv, self).__init__(self.env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_return
