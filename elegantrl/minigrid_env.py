@@ -39,7 +39,7 @@ class Memory(gym.Wrapper):
             reward -= 0.01
         else:
             reward += 0.02
-        if done: reward += 10
+        #if done: reward += 10
         return obs, reward, done, info
 
     def _append(self, obs):
@@ -73,6 +73,13 @@ class FlattenObs(gym.ObservationWrapper):
     def observation(self, observation):
         return np.array(observation.flatten(), dtype=np.float32)
 
+class RewardChange(gym.Wrapper):
+    def __init__(self, env):
+        super(RewardChange, self).__init__(env)
+        env = DirectionObsWrapper(env)
+
+
+
 
 
 class MinigridEnv(gym.Wrapper):
@@ -87,6 +94,8 @@ class MinigridEnv(gym.Wrapper):
         else:
             env = OneHotPartialObsWrapper(env)
             env = WarpFrame(env)
+            env = StateBonus(env)
+            env = ActionBonus(env)
             self.env = FlattenObs(env)
 
 
