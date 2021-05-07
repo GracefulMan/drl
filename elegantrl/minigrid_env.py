@@ -73,11 +73,6 @@ class FlattenObs(gym.ObservationWrapper):
     def observation(self, observation):
         return np.array(observation.flatten(), dtype=np.float32)
 
-class RewardChange(gym.Wrapper):
-    def __init__(self, env):
-        super(RewardChange, self).__init__(env)
-        env = DirectionObsWrapper(env)
-
 
 
 
@@ -97,15 +92,18 @@ class MinigridEnv(gym.Wrapper):
             env = StateBonus(env)
             env = ActionBonus(env)
             self.env = FlattenObs(env)
-
-
-
-
         super(MinigridEnv, self).__init__(self.env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_return
          ) = get_gym_env_info(self.env, True)
 
+    def step(self, action):
+        state, reward, done, info = self.env.step(action)
+        if done:
+            reward += 10
+        else:
+            reward = reward / 100
+        return state, reward, done, info
 
 
 
