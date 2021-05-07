@@ -92,6 +92,7 @@ class MinigridEnv(gym.Wrapper):
             env = StateBonus(env)
             env = ActionBonus(env)
             self.env = FlattenObs(env)
+        self.env.action_space = gym.spaces.Discrete(3)
         super(MinigridEnv, self).__init__(self.env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_return
