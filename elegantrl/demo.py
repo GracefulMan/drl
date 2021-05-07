@@ -13,7 +13,7 @@ def demo_for_minigrid():
     from elegantrl.agent import AgentD3QN
     from elegantrl.minigrid_env import MinigridEnv
     args.agent = AgentD3QN()
-    args.env = MinigridEnv(env=gym.make('MiniGrid-SimpleCrossingS9N1-v0'))
+    args.env = MinigridEnv(env=gym.make('MiniGrid-SimpleCrossingS9N1-v0'), Image=False)
     args.net_dim = 2 ** 8
     args.batch_size = 32
     args.eval_gap = 1
@@ -54,6 +54,38 @@ def demo1_discrete_action_space():
     # train_and_evaluate(args)
     args.rollout_num = 4
     train_and_evaluate_mp(args)
+
+
+def demo1_discrete_action_space_simple_env():
+    args = Arguments(agent=None, env=None, gpu_id=None)  # see Arguments() to see hyper-parameters
+    '''choose an DRL algorithm'''
+    # from elegantrl.agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
+    # args.agent = AgentD3QN()
+    from elegantrl.agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
+    args.agent = AgentD3QN()
+
+    '''choose environment'''
+    "TotalStep: 2e3, TargetReturn: 200, UsedTime: 20s, CartPole-v0"
+    "TotalStep: 2e3, TargetReturn: 200, UsedTime: 30s, CartPole-v0 rollout_num = 2"
+    args.env = PreprocessEnv(env=gym.make('CartPole-v0'))
+    # args.env = AtariGameEnv(env=gym.make('Breakout-v0'))
+    args.net_dim = 2 ** 6  # change a default hyper-parameters
+    args.batch_size = 2 ** 8
+    args.target_step = 2 ** 8
+    args.eval_gap = 2 ** 0
+    args.break_step = 10 ** 9
+
+    "TotalStep: 6e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, D3DQN"
+    "TotalStep: 4e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, DuelDQN"
+    # args.env = PreprocessEnv(env=gym.make('LunarLander-v2'))
+    # args.net_dim = 2 ** 8
+    # args.batch_size = 2 ** 8
+
+    '''train and evaluate'''
+    # train_and_evaluate(args)
+    args.rollout_num = 4
+    train_and_evaluate_mp(args)
+
 
 
 def demo2_continuous_action_space_off_policy():
@@ -476,6 +508,7 @@ def demo4_bullet_mujoco_on_policy():
 
 if __name__ == '__main__':
     demo_for_minigrid()
+    #demo1_discrete_action_space_simple_env()
     #demo1_discrete_action_space()
     # demo2_continuous_action_space_off_policy()
     #demo2_continuous_action_space_on_policy()

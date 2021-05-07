@@ -61,17 +61,37 @@ class Memory(gym.Wrapper):
         return obs
 
 
+class FlattenObs(gym.ObservationWrapper):
+    def __init__(self, env):
+        super(FlattenObs, self).__init__(env)
+        w, h, c = self.observation_space.shape
+        low = self.observation_space.low.min()
+        high = self.observation_space.high.max()
+
+        self.observation_space = spaces.Box(low=low, high=high, shape=(w * h * c, ), dtype=np.uint8)
+
+    def observation(self, observation):
+        return np.array(observation.flatten(), dtype=np.float32)
 
 
 
 class MinigridEnv(gym.Wrapper):
-    def __init__(self, env):
-        env = RGBImgPartialObsWrapper(env)
-        env = StateBonus(env)
-        #env = RGBImgObsWrapper(env)
-        env = WarpFrame(env)
-        #env = Memory(env)
-        self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True,scale=False)
+    def __init__(self, env, Image=True):
+        if Image:
+            env = RGBImgPartialObsWrapper(env)
+            env = StateBonus(env)
+            #env = RGBImgObsWrapper(env)
+            env = WarpFrame(env)
+            #env = Memory(env)
+            self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True,scale=False)
+        else:
+            env = OneHotPartialObsWrapper(env)
+            env = WarpFrame(env)
+            self.env = FlattenObs(env)
+
+
+
+
         super(MinigridEnv, self).__init__(self.env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_return
@@ -85,6 +105,7 @@ def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
             assert isinstance(env, gym.Env)
             env_name = env.unwrapped.spec.id
             state_dim = list(env.observation_space.shape)
+            if len(state_dim) == 1: state_dim = state_dim[0]
             target_reward = getattr(env, 'target_reward', None)
             target_reward_default = getattr(env.spec, 'reward_threshold', None)
             if target_reward is None:
@@ -117,7 +138,7 @@ def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
 
 if __name__ == "__main__":
     env = gym.make('MiniGrid-SimpleCrossingS9N1-v0')
-    env = MinigridEnv(env)
+    env = MinigridEnv(env, Image=False)
     obs = env.reset()
     print(obs.shape)
     while True:

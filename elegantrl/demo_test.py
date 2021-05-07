@@ -16,9 +16,10 @@ def test_d3qn():
     episode_return = 0
     step = 0
     for i in range(10 ** 5):
+        env.render()
         action = agent.select_action(state)
         next_state, reward, done, _ = env.step(action)
-        cv2.imwrite(f'img/{i}.png', np.array(next_state[-1].squeeze()*255, dtype=np.int))
+        #cv2.imwrite(f'img/{i}.png', np.array(next_state[-1].squeeze()*255, dtype=np.int))
         episode_return += reward
         step += 1
         if done:
@@ -27,8 +28,7 @@ def test_d3qn():
             episode_return = 0
             step = 0
         state = next_state
-        #env.render()
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 
 
