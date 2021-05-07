@@ -100,10 +100,11 @@ class MinigridEnv(gym.Wrapper):
 
     def step(self, action):
         state, reward, done, info = self.env.step(action)
-        if done:
-            reward += 10
-        else:
-            reward = reward / 100
+        if not isinstance(done, str):
+            if done:
+                reward += 10
+            else:
+                reward = reward / 100
         return state, reward, done, info
 
 
