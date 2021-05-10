@@ -74,18 +74,15 @@ class FlattenObs(gym.ObservationWrapper):
         return np.array(observation.flatten(), dtype=np.float32)
 
 
-
-
-
 class MinigridEnv(gym.Wrapper):
     def __init__(self, env, Image=True):
         if Image:
             env = RGBImgPartialObsWrapper(env)
-            env = StateBonus(env)
+            #env = StateBonus(env)
             #env = RGBImgObsWrapper(env)
             env = WarpFrame(env)
             #env = Memory(env)
-            self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True,scale=False)
+            self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True, scale=False)
         else:
             env = OneHotPartialObsWrapper(env)
             env = WarpFrame(env)
@@ -97,16 +94,6 @@ class MinigridEnv(gym.Wrapper):
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_return
          ) = get_gym_env_info(self.env, True)
-
-    def step(self, action):
-        state, reward, done, info = self.env.step(action)
-        if not isinstance(done, str):
-            if done:
-                reward += 10
-            else:
-                reward = reward / 100
-        return state, reward, done, info
-
 
 
 def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
@@ -141,8 +128,6 @@ def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
                   f"\n| state_dim: {state_dim}, action_dim: {action_dim}, action_max: {action_max}"
                   f"\n| max_step:  {max_step}, target_reward: {target_reward}") if if_print else None
             return env_name, state_dim, action_dim, action_max, max_step, if_discrete, target_reward
-
-
 
 
 if __name__ == "__main__":

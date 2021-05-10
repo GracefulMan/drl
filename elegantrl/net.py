@@ -10,10 +10,23 @@ import numpy as np
 class QNet(nn.Module):  # nn.Module is a standard PyTorch Network
     def __init__(self, mid_dim, state_dim, action_dim):
         super().__init__()
-        self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, mid_dim), nn.ReLU(),
-                                 nn.Linear(mid_dim, action_dim))
+        if not isinstance(state_dim, int):
+            conv = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
+                                 nn.Conv2d(state_dim[0], 32, 3, 2, 1, bias=True), nn.ReLU(),
+                                 nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
+                                 nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
+                                 NnReshape(-1),
+                                 )
+            with torch.no_grad():
+                tmp = torch.rand((1, *state_dim))
+                out_dim = conv(tmp).shape[1]
+            fc = nn.Linear(out_dim, action_dim)
+            self.net = nn.Sequential(conv, fc)
+        else:
+            self.net = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                    nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                    nn.Linear(mid_dim, mid_dim), nn.ReLU(),
+                                    nn.Linear(mid_dim, action_dim))
 
     def forward(self, state):
         return self.net(state)  # Q value
@@ -22,8 +35,23 @@ class QNet(nn.Module):  # nn.Module is a standard PyTorch Network
 class QNetDuel(nn.Module):  # Dueling DQN
     def __init__(self, mid_dim, state_dim, action_dim):
         super().__init__()
-        self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
-                                       nn.Linear(mid_dim, mid_dim), nn.ReLU())
+        if not isinstance(state_dim, int):
+            conv = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
+                                 nn.Conv2d(state_dim[0], 32, 3, 2, 1, bias=True), nn.LeakyReLU(),
+                                 nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
+                                 nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
+                                 NnReshape(-1),
+                                 )
+            with torch.no_grad():
+                tmp = torch.rand((1, *state_dim))
+                out_dim = conv(tmp).shape[1]
+            fc = nn.Sequential(
+                nn.Linear(out_dim, mid_dim), nn.ReLU()
+            )
+            self.net_state = nn.Sequential(conv, fc)
+        else:
+            self.net_state = nn.Sequential(nn.Linear(state_dim, mid_dim), nn.ReLU(),
+                                           nn.Linear(mid_dim, mid_dim), nn.ReLU())
         self.net_val = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
                                      nn.Linear(mid_dim, 1))  # Q value
         self.net_adv = nn.Sequential(nn.Linear(mid_dim, mid_dim), nn.ReLU(),
@@ -42,8 +70,7 @@ class QNetTwin(nn.Module):  # Double DQN
         if not isinstance(state_dim, int):
             conv = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
                                       nn.Conv2d(state_dim[0], 32, 3, 2, 1, bias=True), nn.LeakyReLU(),
-                                      nn.Conv2d(32, 32, 3, 2, 1, bias=False), nn.ReLU(),
-                                      nn.Conv2d(32, 32, 3, 2, 1, bias=False), nn.ReLU(),
+                                      nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
                                       nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
                                       NnReshape(-1),
                                       )
@@ -79,8 +106,7 @@ class QNetTwinDuel(nn.Module):  # D3QN: Dueling Double DQN
         if not isinstance(state_dim, int):
             conv = nn.Sequential(NnReshape(*state_dim),  # -> [batch_size, 4, 96, 96]
                                  nn.Conv2d(state_dim[0], 32, 3, 2, 1, bias=True), nn.LeakyReLU(),
-                                 nn.Conv2d(32, 32, 3, 2, 1, bias=False), nn.ReLU(),
-                                 nn.Conv2d(32, 32, 3, 2, 1, bias=False), nn.ReLU(),
+                                 nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
                                  nn.Conv2d(32, 32, 3, 2, 1, bias=True), nn.ReLU(),
                                  NnReshape(-1),
                                  )

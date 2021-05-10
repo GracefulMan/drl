@@ -10,18 +10,18 @@ gym.logger.set_level(40)  # Block warning: 'WARN: Box bound precision lowered by
 
 def demo_for_minigrid():
     args = Arguments(agent=None, env=None, gpu_id=None)
-    from elegantrl.agent import AgentD3QN
+    from elegantrl.agent import AgentD3QN, AgentDQN
     from elegantrl.minigrid_env import MinigridEnv
-    args.agent = AgentD3QN()
-    args.env = MinigridEnv(env=gym.make('MiniGrid-SimpleCrossingS9N1-v0'), Image=False)
-    args.net_dim = 2 ** 8
-    args.batch_size = 32
+    args.agent = AgentDQN()
+    args.env = MinigridEnv(env=gym.make('MiniGrid-SimpleCrossingS9N1-v0'), Image=True)
+    args.net_dim = 2 ** 10
+    args.batch_size = 128
     args.eval_gap = 1
     args.target_step = 2 ** 8
     args.break_step = 10 ** 6
-    args.rollout_num = 4
+    #args.rollout_num = 4
     args.env.target_return = 10 ** 5
-    train_and_evaluate_mp(args)
+    train_and_evaluate(args)
 
 
 def demo1_discrete_action_space():
@@ -29,10 +29,9 @@ def demo1_discrete_action_space():
     '''choose an DRL algorithm'''
     # from elegantrl.agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
     # args.agent = AgentD3QN()
-    from elegantrl.agent import AgentD3QN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
+    from elegantrl.agent import AgentDQN  # AgentDQN,AgentDuelDQN, AgentDoubleDQN,
     from elegantrl.atari_env import AtariGameEnv
-    args.agent = AgentD3QN()
-
+    args.agent = AgentDQN()
     '''choose environment'''
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 20s, CartPole-v0"
     "TotalStep: 2e3, TargetReturn: 200, UsedTime: 30s, CartPole-v0 rollout_num = 2"
@@ -43,15 +42,10 @@ def demo1_discrete_action_space():
     args.target_step = 2 ** 8
     args.eval_gap = 2 ** 3
     args.break_step = 10 ** 9
-
     "TotalStep: 6e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, D3DQN"
     "TotalStep: 4e4, TargetReturn: 200, UsedTime: 600s, LunarLander-v2, DuelDQN"
     # args.env = PreprocessEnv(env=gym.make('LunarLander-v2'))
-    # args.net_dim = 2 ** 8
-    # args.batch_size = 2 ** 8
-
     '''train and evaluate'''
-    # train_and_evaluate(args)
     args.rollout_num = 4
     train_and_evaluate_mp(args)
 
@@ -504,12 +498,10 @@ def demo4_bullet_mujoco_on_policy():
 #     exit()
 
 
-
-
 if __name__ == '__main__':
-    demo_for_minigrid()
+    #demo_for_minigrid()
     #demo1_discrete_action_space_simple_env()
-    #demo1_discrete_action_space()
+    demo1_discrete_action_space()
     # demo2_continuous_action_space_off_policy()
     #demo2_continuous_action_space_on_policy()
     #demo2_discrete_action_space_on_policy()
