@@ -12,53 +12,14 @@ class WarpFrame(gym.ObservationWrapper):
         high_val = env.observation_space['image'].high.max()
         w, h, c = env.observation_space['image'].shape
         self.observation_space = spaces.Box(low=low_val, high=high_val,
-                shape=(w, h, c), dtype=np.uint8)
+                shape=(c, w, h), dtype=np.uint8)
 
 
     def observation(self, frame):
         frame = frame['image']
-        return frame
-
-
-
-class Memory(gym.Wrapper):
-    def __init__(self, env):
-        gym.Wrapper.__init__(self, env)
-        self.sample_times = 2
-        w, h, _ = env.observation_space.shape
-        w, h = int(w / 2 ** self.sample_times), int(h / 2 ** self.sample_times)
-        self.max_len = 10 ** 3
-        self.memory = np.empty((self.max_len, w, h))
-        self.index = 0
-
-    def step(self, action):
-        obs, reward, done, info = self.env.step(action)
-        sampled_obs = self._downsampling(obs)
-        flag = self._append(sampled_obs)
-        if flag:
-            reward -= 0.01
-        else:
-            reward += 0.02
-        #if done: reward += 10
-        return obs, reward, done, info
-
-    def _append(self, obs):
-        for i in range(self.memory.shape[0]):
-            if np.all(obs == self.memory[i].squeeze()):
-                return True
-        if self.index == self.max_len:
-            self.index = 0
-        self.memory[self.index] = obs
-        self.index += 1
-        return False
-
-    def _downsampling(self, obs:np.ndarray):
-        obs = cv2.cv2.cvtColor(obs, cv2.COLOR_RGB2GRAY)
-        w, h= obs.shape
-        w = int(w / 2 ** self.sample_times)
-        h = int(h / 2 ** self.sample_times)
-        obs = cv2.resize(obs, (w, h), interpolation=cv2.INTER_AREA)
-        return obs
+        frame = (frame-128.) / 128.
+        frame = frame.transpose([2, 0, 1])
+        return frame.astype(np.float32)
 
 
 class FlattenObs(gym.ObservationWrapper):
@@ -77,23 +38,13 @@ class FlattenObs(gym.ObservationWrapper):
 class MinigridEnv(gym.Wrapper):
     def __init__(self, env, Image=True):
         if Image:
-            env = RGBImgPartialObsWrapper(env)
-            #env = StateBonus(env)
-            #env = RGBImgObsWrapper(env)
             env = WarpFrame(env)
-            #env = Memory(env)
-            self.env = wrap_deepmind(env, image_w=None, image_h=None, episode_life=False, frame_stack=True, scale=False)
         else:
-            env = OneHotPartialObsWrapper(env)
-            env = WarpFrame(env)
-            env = StateBonus(env)
-            env = ActionBonus(env)
-            self.env = FlattenObs(env)
-        self.env.action_space = gym.spaces.Discrete(3)
-        super(MinigridEnv, self).__init__(self.env)
+            env = FlattenObs(env)
+        super(MinigridEnv, self).__init__(env)
         (self.env_name, self.state_dim, self.action_dim, self.action_max, self.max_step,
          self.if_discrete, self.target_return
-         ) = get_gym_env_info(self.env, True)
+         ) = get_gym_env_info(env, True)
 
 
 def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
@@ -132,9 +83,8 @@ def get_gym_env_info(env, if_print) -> (str, int, int, int, int, bool, float):
 
 if __name__ == "__main__":
     env = gym.make('MiniGrid-SimpleCrossingS9N1-v0')
-    env = MinigridEnv(env, Image=False)
+    env = MinigridEnv(env, Image=True)
     obs = env.reset()
-    print(obs.shape)
     while True:
         env.render()
         action = env.action_space.sample()
